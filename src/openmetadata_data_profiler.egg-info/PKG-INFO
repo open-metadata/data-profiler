@@ -1,0 +1,29 @@
+Metadata-Version: 2.1
+Name: openmetadata-data-profiler
+Version: 0.0.1
+Summary: Data Profiler Library for OpenMetadata
+Home-page: https://open-metadata.org/
+Author: OpenMetadata Committers
+License: Apache License 2.0
+Project-URL: Documentation, https://docs.open-metadata.org/
+Project-URL: Source, https://github.com/open-metadata/data-profiler
+Platform: UNKNOWN
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Provides-Extra: spark
+Provides-Extra: sqlalchemy
+Provides-Extra: airflow
+Provides-Extra: gcp
+Provides-Extra: redshift
+Provides-Extra: s3
+Provides-Extra: aws_secrets
+Provides-Extra: azure_secrets
+Provides-Extra: snowflake
+
+
+
+Changelog
+=========
+
+
+

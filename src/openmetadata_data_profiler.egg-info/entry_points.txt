@@ -1,0 +1,3 @@
+[console_scripts]
+metadata = metadata.cmd:metadata
+
