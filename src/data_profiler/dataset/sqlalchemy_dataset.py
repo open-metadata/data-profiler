@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List
 
 import numpy as np
 import pandas as pd
+import pyhive.sqlalchemy_hive
 from dateutil.parser import parse
 
 from data_profiler.core.util import (
@@ -618,7 +619,7 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
         if custom_sql:
             self.create_temporary_table(
                 table_name, custom_sql, schema_name=temp_table_schema_name
-            )
+          )
 
             if self.generated_table_name is not None:
                 if self.engine.dialect.name.lower() == "bigquery":
@@ -866,11 +867,11 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             elif nonnull_count % 2 == 0:
                 # An even number of column values: take the average of the two center values
                 column_median = (
-                    float(
-                        column_values[0][0]
-                        + column_values[1][0]  # left center value  # right center value
-                    )
-                    / 2.0
+                        float(
+                            column_values[0][0]
+                            + column_values[1][0]  # left center value  # right center value
+                        )
+                        / 2.0
                 )  # Average center values
             else:
                 # An odd number of column values, we can just take the center value
@@ -1027,7 +1028,7 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
     # The key functional difference is that Redshift does not support the aggregate function
     # "percentile_disc", but does support the approximate percentile_disc or percentile_cont function version instead.```
     def _get_column_quantiles_generic_sqlalchemy(
-        self, column: str, quantiles: Iterable, allow_relative_error: bool
+            self, column: str, quantiles: Iterable, allow_relative_error: bool
     ) -> list:
         selects: List[WithinGroup] = [
             sa.func.percentile_disc(quantile).within_group(sa.column(column).asc())
@@ -1076,14 +1077,14 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             # https://sqlserverrider.wordpress.com/2013/03/06/standard-deviation-functions-stdev-and-stdevp-sql-server).
             res = self.engine.execute(
                 sa.select([sa.func.stdev(sa.column(column))])
-                .select_from(self._table)
-                .where(sa.column(column) is not None)
+                    .select_from(self._table)
+                    .where(sa.column(column) is not None)
             ).fetchone()
         else:
             res = self.engine.execute(
                 sa.select([sa.func.stddev_samp(sa.column(column))])
-                .select_from(self._table)
-                .where(sa.column(column) is not None)
+                    .select_from(self._table)
+                    .where(sa.column(column) is not None)
             ).fetchone()
         return float(res[0])
 
@@ -1100,15 +1101,15 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
 
         # If we have an infinite lower bound, don't express that in sql
         if (
-            bins[0]
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_np", negative=True
-            )
+                bins[0]
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_np", negative=True
+        )
         ) or (
-            bins[0]
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_cast", negative=True
-            )
+                bins[0]
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_cast", negative=True
+        )
         ):
             case_conditions.append(
                 sa.func.sum(
@@ -1136,15 +1137,15 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             )
 
         if (
-            bins[-1]
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_np", negative=False
-            )
+                bins[-1]
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_np", negative=False
+        )
         ) or (
-            bins[-1]
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_cast", negative=False
-            )
+                bins[-1]
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_cast", negative=False
+        )
         ):
             case_conditions.append(
                 sa.func.sum(
@@ -1171,10 +1172,10 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
 
         query = (
             sa.select(case_conditions)
-            .where(
+                .where(
                 sa.column(column) != None,
             )
-            .select_from(self._table)
+                .select_from(self._table)
         )
 
         # Run the data through convert_to_json_serializable to ensure we do not have Decimal types
@@ -1182,7 +1183,7 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
         return hist
 
     def get_column_count_in_range(
-        self, column, min_val=None, max_val=None, strict_min=False, strict_max=True
+            self, column, min_val=None, max_val=None, strict_min=False, strict_max=True
     ):
         if min_val is None and max_val is None:
             raise ValueError("Must specify either min or max value")
@@ -1190,60 +1191,60 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             raise ValueError("Min value must be <= to max value")
 
         if (
-            min_val
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_np", negative=True
-            )
+                min_val
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_np", negative=True
+        )
         ) or (
-            min_val
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_cast", negative=True
-            )
+                min_val
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_cast", negative=True
+        )
         ):
             min_val = get_sql_dialect_floating_point_infinity_value(
                 schema=self.sql_engine_dialect.name.lower(), negative=True
             )
 
         if (
-            min_val
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_np", negative=False
-            )
+                min_val
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_np", negative=False
+        )
         ) or (
-            min_val
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_cast", negative=False
-            )
+                min_val
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_cast", negative=False
+        )
         ):
             min_val = get_sql_dialect_floating_point_infinity_value(
                 schema=self.sql_engine_dialect.name.lower(), negative=False
             )
 
         if (
-            max_val
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_np", negative=True
-            )
+                max_val
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_np", negative=True
+        )
         ) or (
-            max_val
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_cast", negative=True
-            )
+                max_val
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_cast", negative=True
+        )
         ):
             max_val = get_sql_dialect_floating_point_infinity_value(
                 schema=self.sql_engine_dialect.name.lower(), negative=True
             )
 
         if (
-            max_val
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_np", negative=False
-            )
+                max_val
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_np", negative=False
+        )
         ) or (
-            max_val
-            == get_sql_dialect_floating_point_infinity_value(
-                schema="api_cast", negative=False
-            )
+                max_val
+                == get_sql_dialect_floating_point_infinity_value(
+            schema="api_cast", negative=False
+        )
         ):
             max_val = get_sql_dialect_floating_point_infinity_value(
                 schema=self.sql_engine_dialect.name.lower(), negative=False
@@ -1271,8 +1272,8 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
 
         query = (
             sa.select([sa.func.count(sa.column(column))])
-            .where(sa.and_(sa.column(column) != None, condition))
-            .select_from(self._table)
+                .where(sa.and_(sa.column(column) != None, condition))
+                .select_from(self._table)
         )
 
         return convert_to_json_serializable(self.engine.execute(query).scalar())
@@ -1345,7 +1346,7 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
                 strsep = "FROM"
             custom_sqlmod = custom_sql.split(strsep, maxsplit=1)
             stmt = (
-                custom_sqlmod[0] + "into {table_name} from" + custom_sqlmod[1]
+                    custom_sqlmod[0] + "into {table_name} from" + custom_sqlmod[1]
             ).format(table_name=table_name)
         elif engine_dialect == "awsathena":
             stmt = "CREATE TABLE {table_name} AS {custom_sql}".format(
@@ -1427,12 +1428,12 @@ WHERE
     @DocInherit
     @MetaSqlAlchemyDataset.expectation(["other_table_name"])
     def expect_table_row_count_to_equal_other_table(
-        self,
-        other_table_name,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            other_table_name,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         """Expect the number of rows in this table to equal the number of rows in a different table.
 
@@ -1493,24 +1494,24 @@ WHERE
     @DocInherit
     @MetaSqlAlchemyDataset.expectation(["column_list", "ignore_row_if"])
     def expect_compound_columns_to_be_unique(
-        self,
-        column_list,
-        ignore_row_if="all_values_are_missing",
-        result_format=None,
-        row_condition=None,
-        condition_parser=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column_list,
+            ignore_row_if="all_values_are_missing",
+            result_format=None,
+            row_condition=None,
+            condition_parser=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         columns = [
             sa.column(col["name"]) for col in self.columns if col["name"] in column_list
         ]
         query = (
             sa.select([sa.func.count()])
-            .group_by(*columns)
-            .having(sa.func.count() > 1)
-            .select_from(self._table)
+                .group_by(*columns)
+                .having(sa.func.count() > 1)
+                .select_from(self._table)
         )
 
         if ignore_row_if == "all_values_are_missing":
@@ -1559,26 +1560,26 @@ WHERE
     @DocInherit
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_be_null(
-        self,
-        column,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         return sa.column(column) == None
 
     @DocInherit
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_not_be_null(
-        self,
-        column,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
 
         return sa.column(column) != None
@@ -1592,7 +1593,7 @@ WHERE
         try:
             # Redshift does not (yet) export types to top level; only recognize base SA types
             if isinstance(
-                self.sql_engine_dialect, sqlalchemy_redshift.dialect.RedshiftDialect
+                    self.sql_engine_dialect, sqlalchemy_redshift.dialect.RedshiftDialect
             ):
                 return self.dialect.sa
         except (TypeError, AttributeError):
@@ -1601,11 +1602,11 @@ WHERE
         # Bigquery works with newer versions, but use a patch if we had to define bigquery_types_tuple
         try:
             if (
-                isinstance(
-                    self.sql_engine_dialect,
-                    pybigquery.sqlalchemy_bigquery.BigQueryDialect,
-                )
-                and bigquery_types_tuple is not None
+                    isinstance(
+                        self.sql_engine_dialect,
+                        pybigquery.sqlalchemy_bigquery.BigQueryDialect,
+                    )
+                    and bigquery_types_tuple is not None
             ):
                 return bigquery_types_tuple
         except (TypeError, AttributeError):
@@ -1625,14 +1626,14 @@ WHERE
     @DocInherit
     @DataAsset.expectation(["column", "type_", "mostly"])
     def expect_column_values_to_be_of_type(
-        self,
-        column,
-        type_,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            type_,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         if mostly is not None:
             raise ValueError(
@@ -1678,14 +1679,14 @@ WHERE
     @DocInherit
     @DataAsset.expectation(["column", "type_list", "mostly"])
     def expect_column_values_to_be_in_type_list(
-        self,
-        column,
-        type_list,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            type_list,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         if mostly is not None:
             raise ValueError(
@@ -1738,15 +1739,15 @@ WHERE
     @DocInherit
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_be_in_set(
-        self,
-        column,
-        value_set,
-        mostly=None,
-        parse_strings_as_datetimes=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            value_set,
+            mostly=None,
+            parse_strings_as_datetimes=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         if value_set is None:
             # vacuously true
@@ -1761,15 +1762,15 @@ WHERE
     @DocInherit
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_not_be_in_set(
-        self,
-        column,
-        value_set,
-        mostly=None,
-        parse_strings_as_datetimes=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            value_set,
+            mostly=None,
+            parse_strings_as_datetimes=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         if parse_strings_as_datetimes:
             parsed_value_set = self._parse_value_set(value_set)
@@ -1780,20 +1781,20 @@ WHERE
     @DocInherit
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_be_between(
-        self,
-        column,
-        min_value=None,
-        max_value=None,
-        strict_min=False,
-        strict_max=False,
-        allow_cross_type_comparisons=None,
-        parse_strings_as_datetimes=None,
-        output_strftime_format=None,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            min_value=None,
+            max_value=None,
+            strict_min=False,
+            strict_max=False,
+            allow_cross_type_comparisons=None,
+            parse_strings_as_datetimes=None,
+            output_strftime_format=None,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         if parse_strings_as_datetimes:
             if min_value:
@@ -1841,29 +1842,29 @@ WHERE
     @DocInherit
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_value_lengths_to_equal(
-        self,
-        column,
-        value,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            value,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         return sa.func.length(sa.column(column)) == value
 
     @DocInherit
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_value_lengths_to_be_between(
-        self,
-        column,
-        min_value=None,
-        max_value=None,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            min_value=None,
+            max_value=None,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
 
         if min_value is None and max_value is None:
@@ -1894,20 +1895,20 @@ WHERE
 
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_be_unique(
-        self,
-        column,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         # Duplicates are found by filtering a group by query
         dup_query = (
             sa.select([sa.column(column)])
-            .select_from(self._table)
-            .group_by(sa.column(column))
-            .having(sa.func.count(sa.column(column)) > 1)
+                .select_from(self._table)
+                .group_by(sa.column(column))
+                .having(sa.func.count(sa.column(column)) > 1)
         )
 
         # Will - 20210126
@@ -1924,9 +1925,9 @@ WHERE
             self.engine.execute(temp_table_stmt)
             dup_query = (
                 sa.select([sa.column(column)])
-                .select_from(sa.text(temp_table_name))
-                .group_by(sa.column(column))
-                .having(sa.func.count(sa.column(column)) > 1)
+                    .select_from(sa.text(temp_table_name))
+                    .group_by(sa.column(column))
+                    .having(sa.func.count(sa.column(column)) > 1)
             )
         return sa.column(column).notin_(dup_query)
 
@@ -1981,8 +1982,8 @@ WHERE
         try:
             # Snowflake
             if isinstance(
-                self.sql_engine_dialect,
-                snowflake.sqlalchemy.snowdialect.SnowflakeDialect,
+                    self.sql_engine_dialect,
+                    snowflake.sqlalchemy.snowdialect.SnowflakeDialect,
             ):
                 if positive:
                     return BinaryExpression(
@@ -1993,15 +1994,15 @@ WHERE
                         sa.column(column), literal(regex), custom_op("NOT RLIKE")
                     )
         except (
-            AttributeError,
-            TypeError,
+                AttributeError,
+                TypeError,
         ):  # TypeError can occur if the driver was not installed and so is None
             pass
 
         try:
             # Bigquery
             if isinstance(
-                self.sql_engine_dialect, pybigquery.sqlalchemy_bigquery.BigQueryDialect
+                    self.sql_engine_dialect, pybigquery.sqlalchemy_bigquery.BigQueryDialect
             ):
                 if positive:
                     return sa.func.REGEXP_CONTAINS(sa.column(column), literal(regex))
@@ -2010,8 +2011,8 @@ WHERE
                         sa.func.REGEXP_CONTAINS(sa.column(column), literal(regex))
                     )
         except (
-            AttributeError,
-            TypeError,
+                AttributeError,
+                TypeError,
         ):  # TypeError can occur if the driver was not installed and so is None
             pass
 
@@ -2019,14 +2020,14 @@ WHERE
 
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_match_regex(
-        self,
-        column,
-        regex,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            regex,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         regex_expression = self._get_dialect_regex_expression(column, regex)
         if regex_expression is None:
@@ -2039,14 +2040,14 @@ WHERE
 
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_not_match_regex(
-        self,
-        column,
-        regex,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            regex,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         regex_expression = self._get_dialect_regex_expression(
             column, regex, positive=False
@@ -2061,15 +2062,15 @@ WHERE
 
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_match_regex_list(
-        self,
-        column,
-        regex_list,
-        match_on="any",
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            regex_list,
+            match_on="any",
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
 
         if match_on not in ["any", "all"]:
@@ -2103,14 +2104,14 @@ WHERE
 
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_not_match_regex_list(
-        self,
-        column,
-        regex_list,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            regex_list,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         if len(regex_list) == 0:
             raise ValueError("At least one regex must be supplied in the regex_list.")
@@ -2139,8 +2140,8 @@ WHERE
             if hasattr(self.sql_engine_dialect, "BigQueryDialect"):
                 dialect_supported = True
         except (
-            AttributeError,
-            TypeError,
+                AttributeError,
+                TypeError,
         ):  # TypeError can occur if the driver was not installed and so is None
             logger.debug(
                 "Unable to load BigQueryDialect dialect while running _get_dialect_like_pattern_expression",
@@ -2149,19 +2150,19 @@ WHERE
             pass
 
         if isinstance(
-            self.sql_engine_dialect,
-            (
-                sa.dialects.sqlite.dialect,
-                sa.dialects.postgresql.dialect,
-                sa.dialects.mysql.dialect,
-                sa.dialects.mssql.dialect,
-            ),
+                self.sql_engine_dialect,
+                (
+                        sa.dialects.sqlite.dialect,
+                        sa.dialects.postgresql.dialect,
+                        sa.dialects.mysql.dialect,
+                        sa.dialects.mssql.dialect,
+                ),
         ):
             dialect_supported = True
 
         try:
             if isinstance(
-                self.sql_engine_dialect, sqlalchemy_redshift.dialect.RedshiftDialect
+                    self.sql_engine_dialect, sqlalchemy_redshift.dialect.RedshiftDialect
             ):
                 dialect_supported = True
         except (AttributeError, TypeError):
@@ -2180,14 +2181,14 @@ WHERE
 
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_match_like_pattern(
-        self,
-        column,
-        like_pattern,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            like_pattern,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         like_pattern_expression = self._get_dialect_like_pattern_expression(
             column, like_pattern
@@ -2203,14 +2204,14 @@ WHERE
 
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_not_match_like_pattern(
-        self,
-        column,
-        like_pattern,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            like_pattern,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         like_pattern_expression = self._get_dialect_like_pattern_expression(
             column, like_pattern, positive=False
@@ -2226,15 +2227,15 @@ WHERE
 
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_match_like_pattern_list(
-        self,
-        column,
-        like_pattern_list,
-        match_on="any",
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            like_pattern_list,
+            match_on="any",
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
 
         if match_on not in ["any", "all"]:
@@ -2273,14 +2274,14 @@ WHERE
 
     @MetaSqlAlchemyDataset.column_map_expectation
     def expect_column_values_to_not_match_like_pattern_list(
-        self,
-        column,
-        like_pattern_list,
-        mostly=None,
-        result_format=None,
-        include_config=True,
-        catch_exceptions=None,
-        meta=None,
+            self,
+            column,
+            like_pattern_list,
+            mostly=None,
+            result_format=None,
+            include_config=True,
+            catch_exceptions=None,
+            meta=None,
     ):
         if len(like_pattern_list) == 0:
             raise ValueError(
