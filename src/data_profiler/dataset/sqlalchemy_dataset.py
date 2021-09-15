@@ -83,8 +83,8 @@ except ImportError:
     sqlalchemy_redshift = None
 try:
     import pyhive.sqlalchemy_hive
-except ImportError:
-    pyhive.sqlalchemy_hive = None
+except (ImportError, KeyError):
+    pyhive = None
 
 try:
     import snowflake.sqlalchemy.snowdialect
@@ -1326,11 +1326,10 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             )
         elif engine_dialect == "snowflake":
             table_type = "TEMPORARY" if self.generated_table_name else "TRANSIENT"
-            logger.warning("Creating temporary table %s" % table_name)
             stmt_1 = "USE {};".format(self.database_name)
             stmt_2 = "CREATE OR REPLACE {table_type} TABLE {table_name} AS {custom_sql}".format(
-                    table_type=table_type, table_name=table_name,
-                    custom_sql=custom_sql
+                table_type=table_type, table_name=table_name,
+                custom_sql=custom_sql
             )
         elif self.sql_engine_dialect.name == "mysql":
             # Note: We can keep the "MySQL" clause separate for clarity, even though it is the same as the generic case.
@@ -1621,7 +1620,7 @@ WHERE
             ):
                 return self.dialect
         except Exception as err:
-            logger.warning(err)
+            pass
         return self.dialect
 
     @DocInherit

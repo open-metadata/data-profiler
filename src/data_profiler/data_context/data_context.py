@@ -328,7 +328,6 @@ class BaseDataContext:
         Returns:
             None
         """
-        print("hello world")
 
         if not BaseDataContext.validate_config(project_config):
             raise ge_exceptions.InvalidConfigError(
