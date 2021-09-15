@@ -328,7 +328,6 @@ class BaseDataContext:
         Returns:
             None
         """
-        print("hello world")
 
         if not BaseDataContext.validate_config(project_config):
             raise ge_exceptions.InvalidConfigError(
@@ -2958,7 +2957,9 @@ class BaseDataContext:
             run_id = RunIdentifier(run_name=run_name, run_time=run_time)
 
         logger.info(f"Profiling '{datasource_name}' with '{profiler.__name__}'")
-
+        if batch_kwargs['project_id'] is not None: 
+            batch_kwargs['bigquery_temp_table'] = f"{batch_kwargs['schema']}" \
+                                              f".{batch_kwargs['datasource']}"
         if not additional_batch_kwargs:
             additional_batch_kwargs = {}
 

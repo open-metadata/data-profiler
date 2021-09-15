@@ -80,6 +80,10 @@ try:
     import sqlalchemy_redshift.dialect
 except ImportError:
     sqlalchemy_redshift = None
+try:
+    import pyhive.sqlalchemy_hive
+except (ImportError, KeyError):
+    pyhive = None
 
 try:
     import snowflake.sqlalchemy.snowdialect
@@ -534,9 +538,9 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             except Exception as err:
                 # Currently we do no error handling if the engine doesn't work out of the box.
                 raise err
-
         if self.engine.dialect.name.lower() == "bigquery":
             # In BigQuery the table name is already qualified with its schema name
+            self.project_id = kwargs['batch_kwargs']['project_id']
             self._table = sa.Table(table_name, sa.MetaData(), schema=None)
             temp_table_schema_name = None
         else:
@@ -550,16 +554,15 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
                 temp_table_schema_name = conn_object.engine.url.query.get("schema")
 
             self._table = sa.Table(table_name, sa.MetaData(), schema=schema)
-
         # Get the dialect **for purposes of identifying types**
         dialect_name: str = self.engine.dialect.name.lower()
-
         if dialect_name in [
             "postgresql",
             "mysql",
             "sqlite",
             "oracle",
             "mssql",
+            "hive"
         ]:
             # These are the officially included and supported dialects by sqlalchemy
             self.dialect = import_library_module(
@@ -581,11 +584,16 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             self.dialect = import_library_module(
                 module_name="pyathena.sqlalchemy_athena"
             )
+        elif dialect_name == b"hive":
+            self.dialect = import_library_module(
+                module_name="pyhive.sqlalchemy_hive"
+            )
         else:
             self.dialect = None
 
-        if engine and engine.dialect.name.lower() in ["sqlite", "mssql", "snowflake"]:
+        if engine and engine.dialect.name.lower() in ["sqlite", "mssql", "snowflake", "hive"]:
             # sqlite/mssql/snowflake temp tables only persist within a connection so override the engine
+            self.database_name = self.engine.url.database
             self.engine = engine.connect()
 
         if schema is not None and custom_sql is not None:
@@ -1307,7 +1315,6 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
         # handle cases where dialect.name.lower() returns a byte string (e.g. databricks)
         if isinstance(engine_dialect, bytes):
             engine_dialect = str(engine_dialect, "utf-8")
-
         if engine_dialect == "bigquery":
             stmt = "CREATE OR REPLACE VIEW `{table_name}` AS {custom_sql}".format(
                 table_name=table_name, custom_sql=custom_sql
@@ -1318,12 +1325,10 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             )
         elif engine_dialect == "snowflake":
             table_type = "TEMPORARY" if self.generated_table_name else "TRANSIENT"
-
-            logger.info("Creating temporary table %s" % table_name)
-            if schema_name is not None:
-                table_name = schema_name + "." + table_name
-            stmt = "CREATE OR REPLACE {table_type} TABLE {table_name} AS {custom_sql}".format(
-                table_type=table_type, table_name=table_name, custom_sql=custom_sql
+            stmt_1 = "USE {};".format(self.database_name)
+            stmt_2 = "CREATE OR REPLACE {table_type} TABLE {table_name} AS {custom_sql}".format(
+                table_type=table_type, table_name=table_name,
+                custom_sql=custom_sql
             )
         elif self.sql_engine_dialect.name == "mysql":
             # Note: We can keep the "MySQL" clause separate for clarity, even though it is the same as the generic case.
@@ -1356,6 +1361,10 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             stmt_2 = "CREATE GLOBAL TEMPORARY TABLE {table_name} ON COMMIT PRESERVE ROWS AS {custom_sql}".format(
                 table_name=table_name, custom_sql=custom_sql
             )
+        elif engine_dialect == "hive":
+            stmt = 'CREATE TEMPORARY TABLE {table_name} AS {custom_sql}'.format(
+                table_name=table_name, custom_sql=custom_sql
+            )
         else:
             stmt = 'CREATE TEMPORARY TABLE "{table_name}" AS {custom_sql}'.format(
                 table_name=table_name, custom_sql=custom_sql
@@ -1366,6 +1375,9 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
                 self.engine.execute(stmt_1)
             except DatabaseError:
                 self.engine.execute(stmt_2)
+        elif engine_dialect == "snowflake":
+            self.engine.execute(stmt_1)
+            self.engine.execute(stmt_2)
         else:
             self.engine.execute(stmt)
 
@@ -1598,7 +1610,16 @@ WHERE
                 return bigquery_types_tuple
         except (TypeError, AttributeError):
             pass
-
+        try:
+            if (
+                    isinstance(
+                        self.sql_engine_dialect,
+                        pyhive.sqlalchemy_hive.HiveDialect,
+                    )
+            ):
+                return self.dialect
+        except Exception as err:
+            pass
         return self.dialect
 
     @DocInherit
@@ -1649,7 +1670,6 @@ WHERE
                 else:
                     real_type = potential_type
                 success = issubclass(col_type, real_type)
-
             return {"success": success, "result": {"observed_value": col_type.__name__}}
 
         except AttributeError:
@@ -1928,7 +1948,7 @@ WHERE
         try:
             # redshift
             if isinstance(
-                self.sql_engine_dialect, sqlalchemy_redshift.dialect.RedshiftDialect
+                    self.sql_engine_dialect, sqlalchemy_redshift.dialect.RedshiftDialect
             ):
                 if positive:
                     return BinaryExpression(
@@ -1939,8 +1959,8 @@ WHERE
                         sa.column(column), literal(regex), custom_op("!~")
                     )
         except (
-            AttributeError,
-            TypeError,
+                AttributeError,
+                TypeError,
         ):  # TypeError can occur if the driver was not installed and so is None
             pass
 
