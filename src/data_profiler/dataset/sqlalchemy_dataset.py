@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List
 
 import numpy as np
 import pandas as pd
-import pyhive.sqlalchemy_hive
+
 from dateutil.parser import parse
 
 from data_profiler.core.util import (
